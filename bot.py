@@ -2,7 +2,7 @@ import os
 import json
 import ssl
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, InputFile
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from dotenv import load_dotenv
 from database.database import Database
@@ -251,7 +251,7 @@ def get_account_keyboard(account_id: int, price: float):
         [InlineKeyboardButton("📎 Купить через CryptoBot (USDT)", callback_data=f"buy_crypto_{account_id}")],
         [InlineKeyboardButton("💵 Купить за рубли", callback_data=f"buy_rub_{account_id}")],
         [InlineKeyboardButton("👨‍💼 Связаться с менеджером", url=f"https://t.me/{PAYMENT_CONTACT[1:]}")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]
+        [InlineKeyboardButton("🔙 К списку лотов", callback_data="back_to_accounts")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -264,25 +264,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_admin = _is_admin(user)
     
     welcome_text = (
-        f"Добро пожаловать в VEO3 AI, {user.first_name}!\n\n"
-        "Откройте для себя новые горизонты в создании контента. Мы предлагаем премиум-доступ к VEO3 — мощному инструменту на базе искусственного интеллекта.\n\n"
-        "Что умеет VEO3?\n"
-        "🎬 Создавать видео: От коротких клипов до полноценных роликов.\n"
-        "📝 Писать тексты: Генерировать статьи, посты и описания.\n"
-        "📈 Автоматизировать маркетинг: Упрощать рутинные задачи и повышать охваты.\n"
-        "📊 Анализировать результаты: Оптимизировать контент на основе данных.\n\n"
-        "Почему выбирают нас?\n"
-        "⚡️ Моментальная доставка: Доступ к аккаунту придет сразу после оплаты.\n"
-        "💳 Гибкая оплата: Возможность оплаты в USDT или рублях.\n"
-        "🛡️ Полная гарантия: Уверенность в качестве на весь период подписки.\n"
-        "💬 Поддержка 24/7: Мы всегда рядом, чтобы ответить на ваши вопросы.\n\n"
-        "Готовы начать? Выберите действие в меню."
+        f"VEO3 AI — Ваш доступ к нейросетям Google, {user.first_name}.\n\n"
+        "🔥 Veo3: Генерация видео 1080p с реалистичной озвучкой.\n"
+        "🧠 Gemini 2.5 Pro: Глубокий анализ данных и создание сложных текстов.\n"
+        "🍌 Nano Banana: Редактирование ваших фото: меняйте фон, стиль и детали.\n\n"
+        "🛡️ Гарантия | Моментальная доставка | Поддержка 24/7\n\n"
+        "Выберите опцию в меню, чтобы начать."
     )
     
-    await update.message.reply_text(
-        welcome_text,
-        reply_markup=get_main_keyboard(is_admin)
-    )
+    # Пытаемся отправить фотографию с текстом
+    try:
+        photo_path = os.path.join(os.path.dirname(__file__), 'pic', '2.png')
+        if os.path.exists(photo_path):
+            with open(photo_path, 'rb') as photo:
+                await update.message.reply_photo(
+                    photo=photo,
+                    caption=welcome_text,
+                    reply_markup=get_main_keyboard(is_admin)
+                )
+        else:
+            # Если фото не найдено, отправляем только текст
+            await update.message.reply_text(
+                welcome_text,
+                reply_markup=get_main_keyboard(is_admin)
+            )
+    except Exception as e:
+        logger.error(f"Error sending photo in start command: {e}")
+        # В случае ошибки отправляем только текст
+        await update.message.reply_text(
+            welcome_text,
+            reply_markup=get_main_keyboard(is_admin)
+        )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Help command handler"""
@@ -300,23 +312,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         help_text = (
-            "🎆 **VEO3 AI - Получите мощь искусственного интеллекта!**\n\n"
-            "🔥 **Возможности VEO3:**\n"
-            "• 🎬 Генерация профессиональных видео\n"
-            "• 📝 Автоматическое создание текстов\n"
-            "• 🇺🇦 Маркетинговая автоматизация\n"
-            "• 📊 Аналитика и оптимизация контента\n\n"
-            "📌 **Команды:**\n"
-            "👀 Доступные лоты - просмотр всех аккаунтов\n"
-            "📞 Поддержка - связь с менеджером\n\n"
-            "💳 **Способы оплаты:**\n"
-            f"⚡️ {CRYPTO_BOT_USERNAME} (USDT) - мгновенная выдача\n"
-            f"💵 Рубли (Курс: 1 USDT = {USDT_TO_RUB_RATE}₽) - через менеджера\n\n"
-            "🚀 **Как купить:**\n"
-            "1️⃣ Выберите подходящий лот\n"
-            "2️⃣ Выберите способ оплаты\n"
-            "3️⃣ Оплатите и получите доступ!\n\n"
-            "🎁 Получайте максимум от VEO3 AI сегодня!"
+            "VEO3 AI - доступ к нейросетям Google\n\n"
+            "🔥 Возможности:\n"
+            "• Veo3 - генерация видео 1080p\n"
+            "• Gemini 2.5 Pro - анализ данных и создание текстов\n"
+            "• Nano Banana - редактирование фото\n\n"
+            "💳 Оплата:\n"
+            f"• {CRYPTO_BOT_USERNAME} (USDT) - мгновенно\n"
+            f"• Рубли (1 USDT = {USDT_TO_RUB_RATE}₽) - через менеджера\n\n"
+            "📞 Поддержка: 24/7"
         )
     
     await update.message.reply_text(help_text)
@@ -407,48 +411,57 @@ async def make_me_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ Недостаточно прав для назначения администратора.")
 
 async def show_accounts(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show available accounts"""
+    """Показать доступные лоты"""
     accounts = db.get_available_accounts()
     
     if not accounts:
-        await update.message.reply_text("😔 Сейчас нет доступных лотов.")
+        message_text = "😔 Сейчас нет доступных лотов."
+        if hasattr(update, 'callback_query') and update.callback_query:
+            await update.callback_query.edit_message_text(message_text)
+        else:
+            await update.message.reply_text(message_text)
         return
 
+    # Создаем одно сообщение со всеми лотами
+    message_lines = ["🛍️ **ДОСТУПНЫЕ ЛОТЫ** 🛍️\n"]
+    keyboard_buttons = []
+    
     for account in accounts:
         account_id, details, price = account
         available_count = db.count_available_credentials(account_id)
         queue_size = db.get_queue_size(account_id)
-        
         rub_price = int(price * USDT_TO_RUB_RATE)
         
         if available_count > 0:
-            # Лот с доступными аккаунтами
-            message = (
-                f"🎆 **{details}** 🎆\n"
-                f"🔢 ID лота: {account_id}\n\n"
-                f"💰 **Цена:**\n"
-                f"• {price} USDT\n"
-                f"• {rub_price} ₽\n\n"
-                f"📎 **Доступно:** {available_count} аккаунтов\n"
-                f"⚡️ **Мгновенная выдача после оплаты!**"
-            )
+            status_emoji = "✅"
+            status_text = f"Доступно: {available_count} шт."
         else:
-            # Лот без аккаунтов, но с очередью
-            message = (
-                f"⏳ **{details} - ОЧЕРЕДЬ** ⏳\n"
-                f"🔢 ID лота: {account_id}\n\n"
-                f"💰 **Цена:**\n"
-                f"• {price} USDT\n"
-                f"• {rub_price} ₽\n\n"
-                f"📦 **Аккаунтов:** 0 (закончились)\n"
-                f"👥 **В очереди:** {queue_size} чел.\n\n"
-                f"💡 **Можно оплатить и встать в очередь!**\n"
-                f"⚡️ **Автоматическая выдача при пополнении!**"
-            )
+            status_emoji = "⏳"
+            status_text = f"Очередь: {queue_size} чел."
         
+        message_lines.append(
+            f"{status_emoji} **{details}**\n"
+            f"🔢 ID: {account_id} | 💰 {price} USDT ({rub_price}₽)\n"
+            f"📊 {status_text}\n"
+        )
+        
+        # Добавляем кнопку для каждого лота
+        button_text = f"{status_emoji} Купить - #{account_id}"
+        keyboard_buttons.append([InlineKeyboardButton(button_text, callback_data=f"view_lot_{account_id}")])
+    
+    message_text = "\n".join(message_lines)
+    keyboard = InlineKeyboardMarkup(keyboard_buttons)
+    
+    if hasattr(update, 'callback_query') and update.callback_query:
+        await update.callback_query.edit_message_text(
+            message_text, 
+            reply_markup=keyboard, 
+            parse_mode='Markdown'
+        )
+    else:
         await update.message.reply_text(
-            message,
-            reply_markup=get_account_keyboard(account_id, price),
+            message_text,
+            reply_markup=keyboard,
             parse_mode='Markdown'
         )
 
@@ -889,20 +902,32 @@ async def handle_gift_request(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     if text == "🎁 Получить подарок":
         instructions = (
-            f"🎁 Получить подарок от VEO3!\n\n"
-            f"Инструкция:\n"
-            f"• Напиши 10 нативных комментариев в TikTok (учитывая контекст видео)\n"
-            f"• Обязательно упомяни наш бот: @web4go_bot\n"
-            f"• Скопируй ссылки на все 10 комментариев\n"
-            f"• Пришли все 10 ссылок одним сообщением (каждая новая ссылка с новой строки)\n\n"
-            f"✨ Пример комментария:\n"
-            f"\"Да, ты сказал по факту, но мне проще получить аккаунт бесплатно на @web4go_bot\" - то есть нужно указать на то, что в боте можно получить бесплатно аккаунт нейросети, и при этом оставить комментарий с контекстом видео.\n\n"
-            f"После отправки ссылок они будут проверены модераторами, и в случае соблюдения всех условий вы получаете данные от аккаунта VEO3 совершенно БЕСПЛАТНО!\n\n"
-            f"Ниже пришли 10 ссылок на твои комментарии одним сообщением"
+            f"🎁 Бесплатный аккаунт VEO3 за комментарии.\n\n"
+            f"Инструкция:\n\n"
+            f"Оставьте 10 нативных комментариев в TikTok, упомянув наш бот @web4go_bot и возможность получить бесплатный доступ.\n\n"
+            f"Скопируйте ссылки на все 10 комментариев.\n\n"
+            f"Отправьте все 10 ссылок одним сообщением ниже (каждая с новой строки).\n\n"
+            f"После проверки вы получите данные от аккаунта VEO3 бесплатно."
         )
         
         context.user_data["awaiting_gift_links"] = True
-        await update.message.reply_text(instructions)
+        
+        # Пытаемся отправить фотографию с текстом
+        try:
+            photo_path = os.path.join(os.path.dirname(__file__), 'pic', '1.jpeg')
+            if os.path.exists(photo_path):
+                with open(photo_path, 'rb') as photo:
+                    await update.message.reply_photo(
+                        photo=photo,
+                        caption=instructions
+                    )
+            else:
+                # Если фото не найдено, отправляем только текст
+                await update.message.reply_text(instructions)
+        except Exception as e:
+            logger.error(f"Error sending photo in gift request: {e}")
+            # В случае ошибки отправляем только текст
+            await update.message.reply_text(instructions)
         return
     
     # Обработка полученных ссылок
@@ -1304,7 +1329,7 @@ async def handle_crypto_purchase(update: Update, context: ContextTypes.DEFAULT_T
                     keyboard = [
                         [InlineKeyboardButton("💳 Оплатить", url=payment_url)],
                         [InlineKeyboardButton("🔄 Проверить оплату", callback_data=f"check_{account_id}")],
-                        [InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]
+                        [InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]
                     ]
                     await query.edit_message_text(payment_text, reply_markup=InlineKeyboardMarkup(keyboard))
                 else:
@@ -1317,7 +1342,7 @@ async def handle_crypto_purchase(update: Update, context: ContextTypes.DEFAULT_T
             logger.error(f"Payment error: {e}")
             await query.edit_message_text(
                 "❌ Ошибка при создании платежа. Попробуйте позже.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]])
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]])
             )
         return
     
@@ -1353,7 +1378,7 @@ async def handle_crypto_purchase(update: Update, context: ContextTypes.DEFAULT_T
             keyboard = [
                 [InlineKeyboardButton("💳 Оплатить", url=payment_url)],
                 [InlineKeyboardButton("🔄 Проверить оплату", callback_data=f"check_{account_id}")],
-                [InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]
+                [InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]
             ]
             await query.edit_message_text(payment_text, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
@@ -1364,7 +1389,7 @@ async def handle_crypto_purchase(update: Update, context: ContextTypes.DEFAULT_T
         logger.error(f"Payment error: {e}")
         await query.edit_message_text(
             "❌ Ошибка при создании платежа. Попробуйте позже.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]])
         )
 
 async def handle_rub_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE, account_id: int):
@@ -1427,7 +1452,7 @@ async def handle_rub_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE
         keyboard = [
             [InlineKeyboardButton("📞 Связаться с менеджером", url=f"https://t.me/{RUB_PAYMENT_CONTACT[1:]}")],
             [InlineKeyboardButton("📈 Покупка через USDT", callback_data=f"buy_crypto_{account_id}")],
-            [InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]
+            [InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]
         ]
         
         await query.edit_message_text(payment_text, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1465,7 +1490,7 @@ async def handle_rub_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE
     keyboard = [
         [InlineKeyboardButton("📞 Связаться с менеджером", url=f"https://t.me/{RUB_PAYMENT_CONTACT[1:]}")],
         [InlineKeyboardButton("📈 Покупка через USDT", callback_data=f"buy_crypto_{account_id}")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]
+        [InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]
     ]
     
     await query.edit_message_text(payment_text, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1502,12 +1527,46 @@ async def create_crypto_invoice(price: float, user_id: int, account_id: int) -> 
             return data
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle button callbacks"""
+    """Обработка кнопок колбэков"""
     query = update.callback_query
     await query.answer()
     
     if query.data == "back_to_accounts":
         await show_accounts(update, context)
+        return
+    
+    if query.data.startswith("view_lot_"):
+        account_id = int(query.data.split("_")[2])
+        account = db.get_account(account_id)
+        if account:
+            available_count = db.count_available_credentials(account_id)
+            queue_size = db.get_queue_size(account_id)
+            rub_price = int(account[2] * USDT_TO_RUB_RATE)
+            
+            if available_count > 0:
+                message = (
+                    f"🎆 **{account[1]}** 🎆\n\n"
+                    f"🔢 **ID лота:** {account_id}\n"
+                    f"💰 **Цена:** {account[2]} USDT ({rub_price} ₽)\n"
+                    f"📎 **Доступно:** {available_count} аккаунтов\n\n"
+                    f"⚡️ **Мгновенная выдача после оплаты!**"
+                )
+            else:
+                message = (
+                    f"⏳ **{account[1]} - ОЧЕРЕДЬ** ⏳\n\n"
+                    f"🔢 **ID лота:** {account_id}\n"
+                    f"💰 **Цена:** {account[2]} USDT ({rub_price} ₽)\n"
+                    f"📦 **Аккаунтов:** 0 (закончились)\n"
+                    f"👥 **В очереди:** {queue_size} чел.\n\n"
+                    f"💡 **Можно оплатить и встать в очередь!**\n"
+                    f"⚡️ **Автоматическая выдача при пополнении!**"
+                )
+                
+            await query.edit_message_text(
+                message,
+                reply_markup=get_account_keyboard(account_id, account[2]),
+                parse_mode='Markdown'
+            )
         return
     
     if query.data.startswith("back_to_account_"):
@@ -1589,7 +1648,7 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
         if not payment:
             await query.edit_message_text(
                 "❌ Платёж не найден. Попробуйте создать новый.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]])
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]])
             )
             return
         
@@ -1666,14 +1725,14 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
                 "⏳ Оплата не получена\n\nЕсли вы уже оплатили, подождите немного и нажмите «Проверить оплату» снова.",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Проверить оплату", callback_data=f"check_{account_id}")],
-                    [InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]
+                    [InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]
                 ])
             )
     except Exception as e:
         logger.error(f"Error checking payment: {e}")
         await query.edit_message_text(
             "❌ Ошибка при проверке платежа. Попробуйте позже.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="back_to_accounts")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data=f"view_lot_{account_id}")]])
         )
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
